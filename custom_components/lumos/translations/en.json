@@ -3,13 +3,11 @@
     "step": {
       "user": {
         "title": "Connect to Lumos Cloud",
-        "description": "Enter your Lumos cloud credentials. The Base URL is the API endpoint provided by WiSilica (e.g. https://lumos.wisilica.com/wiseconnect/api/public). Supports lights and curtain/blind devices.",
+        "description": "Enter your Lumos cloud credentials to connect to the WiSilica Lumos cloud.",
         "data": {
           "base_url": "Cloud API Base URL",
           "username": "Username",
-          "password": "Password",
-          "bundle_id": "Bundle Client ID",
-          "bundle_package": "Bundle Package"
+          "password": "Password"
         }
       },
       "reauth_confirm": {
