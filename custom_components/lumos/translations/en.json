@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Lumos Cloud",
+        "description": "Enter your Lumos cloud credentials. The Base URL is the API endpoint provided by WiSilica (e.g. https://lumos.wisilica.com/wiseconnect/api/public). Supports lights and curtain/blind devices.",
+        "data": {
+          "base_url": "Cloud API Base URL",
+          "username": "Username",
+          "password": "Password",
+          "bundle_id": "Bundle Client ID",
+          "bundle_package": "Bundle Package"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate with Lumos",
+        "description": "Your Lumos session has expired. Please enter your password to reconnect.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Unable to reach the Lumos cloud. Check the Base URL and your network.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This Lumos account is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lumos Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    }
+  }
+}

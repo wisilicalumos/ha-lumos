@@ -1,0 +1,11 @@
+{
+  "domain": "lumos",
+  "name": "Lumos Smart Lighting (WiSilica)",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://docs.wisilica.com/lumos",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
