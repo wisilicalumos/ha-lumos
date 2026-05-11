@@ -3,10 +3,10 @@
   "name": "Lumos Smart Lighting (WiSilica)",
   "codeowners": ["@Rakeshcwisilica"],
   "config_flow": true,
-  "documentation": "https://github.com/Rakeshcwisilica/ha-lumos",
+  "documentation": "https://github.com/wisilicalumos/ha-lumos",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/Rakeshcwisilica/ha-lumos/issues",
+  "issue_tracker": "https://github.com/wisilicalumos/ha-lumos/issues",
   "requirements": [],
-  "version": "1.0.0"
+  "version": "1.0.2"
 }
