@@ -147,13 +147,13 @@ class LumosLight(CoordinatorEntity[LumosCoordinator], LightEntity):
             return None
         if self._optimistic_brightness is not None:
             return self._optimistic_brightness
-        return round(int(self._device_data.get(ATTR_INTENSITY, 0)) * 255 / 100)
+        return round(int(float(self._device_data.get(ATTR_INTENSITY, 0))) * 255 / 100)
 
     @property
     def color_temp(self) -> int | None:
         if not self._cap.has_color_temp or self._cap.has_rgbww:
             return None
-        return _mireds_from_lumos_cool(int(self._device_data.get(ATTR_COOL, 0)))
+        return _mireds_from_lumos_cool(int(float(self._device_data.get(ATTR_COOL, 0))))
 
     @property
     def rgb_color(self) -> tuple[int,int,int] | None:
@@ -174,8 +174,8 @@ class LumosLight(CoordinatorEntity[LumosCoordinator], LightEntity):
             return self._optimistic_rgbww
         parsed = _parse_rgb(self._device_data.get(ATTR_RGB))
         r, g, b = parsed if parsed else (255, 255, 255)
-        warm = round(int(self._device_data.get(ATTR_WARM, 0)) * 255 / 100)
-        cool = round(int(self._device_data.get(ATTR_COOL, 0)) * 255 / 100)
+        warm = round(int(float(self._device_data.get(ATTR_WARM, 0))) * 255 / 100)
+        cool = round(int(float(self._device_data.get(ATTR_COOL, 0))) * 255 / 100)
         return (r, g, b, warm, cool)
     @property
     def min_color_temp_kelvin(self) -> int:
@@ -195,9 +195,9 @@ class LumosLight(CoordinatorEntity[LumosCoordinator], LightEntity):
         dev_id = self._device_id
         org_id = self._device_data.get(ATTR_ORG_ID)
         _LOGGER.debug("turn_on kwargs: %s", kwargs)
-        cur_i = int(self._device_data.get(ATTR_INTENSITY, 100))
-        cur_cool = int(self._device_data.get(ATTR_COOL, 0))
-        cur_warm = int(self._device_data.get(ATTR_WARM, 0))
+        cur_i = int(float(self._device_data.get(ATTR_INTENSITY, 100)))
+        cur_cool = int(float(self._device_data.get(ATTR_COOL, 0)))
+        cur_warm = int(float(self._device_data.get(ATTR_WARM, 0)))
         if self._cap.has_rgb:
             cur_rgb = self._device_data.get(ATTR_RGB, "255,255,255")
             if not cur_rgb or cur_rgb == "0,0,0": cur_rgb = "255,255,255"
@@ -237,7 +237,7 @@ class LumosLight(CoordinatorEntity[LumosCoordinator], LightEntity):
         await asyncio.sleep(delay)
         self._optimistic_rgbww = None
         self._optimistic_cool = None
-        cloud_intensity = int(self._device_data.get(ATTR_INTENSITY, 100))
+        cloud_intensity = int(float(self._device_data.get(ATTR_INTENSITY, 100)))
         if cloud_intensity < 99:
             self._optimistic_brightness = None
         self.async_write_ha_state()
