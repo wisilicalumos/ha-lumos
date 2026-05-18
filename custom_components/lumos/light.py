@@ -46,7 +46,7 @@ def _parse_rgb(rgb_str: str | None) -> tuple[int, int, int] | None:
     if not rgb_str:
         return None
     try:
-        r, g, b = (int(v.strip()) for v in rgb_str.split(","))
+        r, g, b = (int(float(v.strip())) for v in rgb_str.split(","))
         return (r, g, b)
     except Exception:
         return None
