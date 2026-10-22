@@ -55,7 +55,7 @@ New device types are automatically logged with a warning so they can be added ea
 
 ### Manual Installation
 
-1. Download the latest release from the [Releases page](https://github.com/raku306363s/ha-lumos/releases)
+1. Download the latest release from the [Releases page](https://github.com/wisilicalumos/ha-lumos/releases)
 2. Copy the `custom_components/lumos` folder into your Home Assistant `config/custom_components/` directory
 3. Restart Home Assistant
 
@@ -147,6 +147,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Developed by [Rakesh C](https://github.com/raku306363s)  
+Developed by  [Rakesh C](https://github.com/Rakeshcwisilica)
 Based on the WiSilica Lumos cloud API  
 Built for the Home Assistant community
