@@ -140,9 +140,7 @@ class LumosOccupancySensor(CoordinatorEntity[LumosCoordinator], BinarySensorEnti
         False = clear / no motion.
 
         Reads ATTR_OCCUPANCY ("occupancyStatus") from coordinator data.
-        TODO: Confirm the exact field name and value convention once a
-              real /wide/1 response for an occupancy device is available.
-              Possible alternatives: "pir", "motionStatus", "presence"
+        Field and value convention confirmed against real /wide/1 responses.
         """
         raw = self._device_data.get(ATTR_OCCUPANCY)
         if raw is None:

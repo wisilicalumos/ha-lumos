@@ -73,11 +73,10 @@ PLATFORMS = ["light", "cover", "binary_sensor", "sensor"]
 
 # -------------------------------------------------------------------------
 # Sensor field names returned by Lumos /wide/1 for sensor-capable devices
-# TODO: Confirm exact field names by inspecting a real /wide/1 response
-#       for a device that has occupancy or daylight sensing.
+# All field names confirmed against real /wide/1 responses.
 # -------------------------------------------------------------------------
-ATTR_OCCUPANCY        = "occupancyStatus"   # 0 = clear, 1 = occupied  (TODO: confirm key)
-ATTR_LUX              = "lux"               # float, lux level          (TODO: confirm key)
-ATTR_LUX_SETPOINT     = "luxSetpoint"       # configured daylight target (TODO: confirm key)
-ATTR_PIR_SENSITIVITY  = "pirSensitivity"    # 0-100                     (TODO: confirm key)
-ATTR_HOLD_TIME        = "holdTime"          # occupancy hold time in sec (TODO: confirm key)
+ATTR_OCCUPANCY        = "occupancyStatus"   # 0 = clear, 1 = occupied
+ATTR_LUX              = "lux"               # float, lux level
+ATTR_LUX_SETPOINT     = "luxSetpoint"       # configured daylight target
+ATTR_PIR_SENSITIVITY  = "pirSensitivity"    # 0-100
+ATTR_HOLD_TIME        = "holdTime"          # occupancy hold time in sec

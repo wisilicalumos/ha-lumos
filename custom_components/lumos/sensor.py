@@ -143,8 +143,7 @@ class LumosLuxSensor(CoordinatorEntity[LumosCoordinator], SensorEntity):
         Ambient light level in lux.
 
         Reads ATTR_LUX ("lux") from coordinator data.
-        TODO: Confirm the exact field name from a real /wide/1 response.
-              Possible alternatives: "luxLevel", "lightLevel", "ambientLux"
+        Field confirmed against real /wide/1 responses for daylight-sensor-capable devices.
         """
         raw = self._device_data.get(ATTR_LUX)
         if raw is None:
