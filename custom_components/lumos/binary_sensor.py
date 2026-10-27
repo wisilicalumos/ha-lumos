@@ -5,10 +5,9 @@ Created for every device whose capability has has_occupancy=True,
 regardless of whether that device is also a light, a cover, or a
 standalone sensor.  All entities share the coordinator's data refresh.
 
-Field used:   ATTR_OCCUPANCY  ("occupancyStatus" by default)
+Field used:   ATTR_OCCUPANCY  ("occupancyStatus")
 Values:       1 = occupied,  0 = clear
-              (TODO: confirm exact field name and value convention from
-               a real /wide/1 response for an occupancy-capable device)
+              Confirmed against real /wide/1 responses for occupancy-capable devices.
 """
 
 from __future__ import annotations

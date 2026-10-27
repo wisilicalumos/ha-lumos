@@ -5,11 +5,9 @@ Created for every device whose capability has has_lux=True,
 regardless of whether that device is also a light, a cover, or a
 standalone sensor.
 
-Field used:  ATTR_LUX  ("lux" by default)
+Field used:  ATTR_LUX  ("lux")
 Unit:        lux  (float)
-             (TODO: confirm exact field name from a real /wide/1 response
-              for a daylight-sensor-capable device.  Alternatives:
-              "luxLevel", "lightLevel", "ambientLux")
+             Confirmed against real /wide/1 responses for daylight-sensor-capable devices.
 """
 
 from __future__ import annotations

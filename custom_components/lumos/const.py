@@ -64,10 +64,8 @@ OP_ID_CURTAIN_CLOSE    = 724   # Fully close
 OP_ID_CURTAIN_PAUSE    = 725   # Stop / pause mid-travel
 OP_ID_CURTAIN_POSITION = 726   # Move to exact position (curtainPosition 0-100)
 
-# Device type values
-# TODO: Confirm DEVICE_TYPE_CURTAIN by inspecting the "deviceType" field of a
-#       curtain device returned by GET /wide/1. Add further types as discovered.
-DEVICE_TYPE_CURTAIN  = 22   # <-- verify this integer from a real /wide/1 response
+# Device type values – confirmed against real GET /wide/1 responses
+DEVICE_TYPE_CURTAIN  = 22
 CURTAIN_DEVICE_TYPES = {DEVICE_TYPE_CURTAIN}
 
 # Platforms
