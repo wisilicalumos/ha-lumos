@@ -67,17 +67,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scan_interval = entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
     coordinator = LumosCoordinator(hass, api, scan_interval)
 
-    # First refresh – raise ConfigEntryNotReady on failure so HA retries
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except Exception as err:
-        raise ConfigEntryNotReady(
-            f"Lumos initial data fetch failed: {err}"
-        ) from err
+    # Raises ConfigEntryNotReady on UpdateFailed and propagates
+    # ConfigEntryAuthFailed so the reauth flow starts.
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # Forward setup to platforms (currently just "light")
+    # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Listen for options updates (e.g. changed polling interval)

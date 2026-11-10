@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for device_id, device_data in coordinator.data.items():
             if device_id in known_ids:
                 continue
-            if is_light_device(device_data.get(ATTR_DEVICE_TYPE)):
+            if is_light_device(device_data.get(ATTR_DEVICE_TYPE), device_data.get(ATTR_DEVICE_NAME)):
                 known_ids.add(device_id)
                 new_entities.append(LumosLight(coordinator, device_id))
         if new_entities:

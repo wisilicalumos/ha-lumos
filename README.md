@@ -31,7 +31,7 @@ A Home Assistant custom integration for [Lumos Smart Lighting](https://www.wisil
 | 1, 2, 3 | Standard Lights | ON/OFF, Brightness, Colour Temp |
 | 6, 7 | RGB Lights | ON/OFF, Brightness, RGB, Colour Temp |
 
-New device types are automatically logged with a warning so they can be added easily.
+Other device types are not exposed in Home Assistant yet. They are skipped and logged with a warning so they can be reported and added.
 
 ---
 
@@ -89,9 +89,9 @@ After setup, you can adjust the polling interval:
 
 The integration polls the Lumos cloud every 30 seconds. New devices added to your Lumos account will appear in Home Assistant automatically on the next poll — no restart required.
 
-If a device type is not recognised, a warning is logged:
+If a device type is not recognised, no entity is created for it and a warning is logged once:
 ```
-WARNING Unknown deviceType=XXXX — add to device_capabilities.py
+WARNING Unknown deviceType=XXXX (device: <name>) — not supported yet, skipping.
 ```
 Please open an issue with the device type number and device name so it can be added.
 

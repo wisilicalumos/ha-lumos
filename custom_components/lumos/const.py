@@ -15,6 +15,15 @@ DEFAULT_BUNDLE_PACKAGE = "com.wisilica.home"
 
 # Lumos API status codes
 API_STATUS_SUCCESS = 20001
+# statusCode values on /login that mean "wrong username or password".
+# 20017 "Invalid username or password" (returned with HTTP 200 for both a
+# wrong password and an unknown user; Lumos API 2.20.7.0).
+API_STATUS_LOGIN_REJECTED: frozenset[int] = frozenset({20017})
+# statusCode values on any authenticated call that mean the session token
+# is invalid or expired. 20038 "Invalid authorization details" (HTTP 400)
+# is returned for a made-up token and for a token superseded by a newer
+# login. The token is cleared and the coordinator logs in again.
+API_STATUS_SESSION_REJECTED: frozenset[int] = frozenset({20038})
 
 # Device type constants (from Lumos platform)
 DEVICE_TYPE_GATEWAY = 5
@@ -58,25 +67,5 @@ OP_ID_RGB = 507         # RGB colour   # Set intensity / colour temp / RGB (comb
 GRP_DVC_DEVICE = 1   # targeting an individual device
 GRP_DVC_GROUP  = 0   # targeting a group
 
-# operationId values – curtain / blind
-OP_ID_CURTAIN_OPEN     = 723   # Fully open
-OP_ID_CURTAIN_CLOSE    = 724   # Fully close
-OP_ID_CURTAIN_PAUSE    = 725   # Stop / pause mid-travel
-OP_ID_CURTAIN_POSITION = 726   # Move to exact position (curtainPosition 0-100)
-
-# Device type values – confirmed against real GET /wide/1 responses
-DEVICE_TYPE_CURTAIN  = 22
-CURTAIN_DEVICE_TYPES = {DEVICE_TYPE_CURTAIN}
-
 # Platforms
-PLATFORMS = ["light", "cover", "binary_sensor", "sensor"]
-
-# -------------------------------------------------------------------------
-# Sensor field names returned by Lumos /wide/1 for sensor-capable devices
-# All field names confirmed against real /wide/1 responses.
-# -------------------------------------------------------------------------
-ATTR_OCCUPANCY        = "occupancyStatus"   # 0 = clear, 1 = occupied
-ATTR_LUX              = "lux"               # float, lux level
-ATTR_LUX_SETPOINT     = "luxSetpoint"       # configured daylight target
-ATTR_PIR_SENSITIVITY  = "pirSensitivity"    # 0-100
-ATTR_HOLD_TIME        = "holdTime"          # occupancy hold time in sec
+PLATFORMS = ["light"]

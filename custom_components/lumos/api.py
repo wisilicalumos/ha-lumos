@@ -22,7 +22,8 @@ from typing import Any
 import aiohttp
 
 from .const import (
-    API_STATUS_SUCCESS,
+    API_STATUS_LOGIN_REJECTED,
+    API_STATUS_SESSION_REJECTED,
     GRP_DVC_DEVICE,
     OPERATIONS_ENDPOINT,
     OP_ID_OFF,
@@ -30,15 +31,23 @@ from .const import (
     OP_ID_INTENSITY,
     OP_ID_CCT,
     OP_ID_RGB,
-    OP_ID_CURTAIN_OPEN,
-    OP_ID_CURTAIN_CLOSE,
-    OP_ID_CURTAIN_PAUSE,
-    OP_ID_CURTAIN_POSITION,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PAGE_SIZE = 100
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+
+def _status_code(data: Any) -> int | None:
+    """Return the Lumos statusCode from a response body, if present."""
+    if not isinstance(data, dict):
+        return None
+    status = data.get("Response", {}).get("Status") if "Response" in data else data
+    try:
+        return int(status["statusCode"])
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 class LumosApiError(Exception):
@@ -117,77 +126,106 @@ class LumosApi:
         return base
 
 
-    # AFTER
-    def _check_status(self, res: dict, context: str = "") -> None:
+    def _check_status(
+        self,
+        res: dict,
+        context: str = "",
+        *,
+        auth_codes: frozenset[int] = frozenset(),
+    ) -> None:
         """
-        Raise LumosApiError if the response does not indicate success.
+        Raise if the response does not indicate success.
 
-        Lumos returns 5-digit codes where any code starting with '2'
-        is a success variant (e.g. 20001 = success, 20002 = updated).
-        Error codes start with other digits (40001 = not found, etc.).
+        Lumos returns 5-digit codes; 2xxxx codes are success variants,
+        except the rejection codes checked first (20017 = invalid
+        username or password).
+
+        Codes in ``auth_codes`` (and the session-rejected codes) raise
+        LumosAuthError; every other failure raises LumosApiError.
         """
         try:
             code = int(res["Response"]["Status"]["statusCode"])
         except (KeyError, TypeError, ValueError) as exc:
             raise LumosApiError(
-                f"Malformed response" + (f" ({context})" if context else "")
+                "Malformed response" + (f" ({context})" if context else "")
             ) from exc
-        if not str(code).startswith("2"):
-            msg = (
-                res.get("Response", {})
-                .get("Status", {})
-                .get("statusMessage", "Unknown error")
-            )
-            raise LumosApiError(f"Lumos API error {code}: {msg} [{context}]")
+        msg = (
+            res.get("Response", {})
+            .get("Status", {})
+            .get("statusMessage", "Unknown error")
+        )
+        # Check rejection codes first: Lumos reports some failures with
+        # 2xxxx codes (e.g. 20017 = invalid username or password).
+        if code in API_STATUS_SESSION_REJECTED:
+            self.token = None
+            raise LumosAuthError(f"Lumos session rejected {code}: {msg} [{context}]")
+        if code in auth_codes:
+            raise LumosAuthError(f"Lumos rejected credentials {code}: {msg} [{context}]")
+        if str(code).startswith("2"):
+            return
+        raise LumosApiError(f"Lumos API error {code}: {msg} [{context}]")
 
-    def _check_status11(self, res: dict, context: str = "") -> None:
-        """Raise LumosApiError if the response status is not success."""
+    async def _request(self, method: str, path: str, payload: dict | None = None) -> dict:
+        """
+        Send one request to the Lumos cloud.
+
+        * HTTP 401/403 clears the stored token and raises LumosAuthError,
+          so the next coordinator poll performs a fresh login.
+        * Every other transport problem (aiohttp.ClientError, timeouts,
+          non-JSON bodies) is wrapped in LumosApiError.
+
+        Payloads and responses are never logged: /login carries the
+        password hash and returns the session token.
+        """
+        session = await self._get_session()
+        url = self.base_url + path
+        _LOGGER.debug("%s %s", method, url)
         try:
-            code = int(res["Response"]["Status"]["statusCode"])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise LumosApiError(f"Malformed response{' (' + context + ')' if context else ''}") from exc
-        if code != API_STATUS_SUCCESS:
-            msg = res.get("Response", {}).get("Status", {}).get("statusMessage", "Unknown error")
-            raise LumosApiError(f"Lumos API error {code}: {msg} [{context}]")
+            async with session.request(
+                method,
+                url,
+                json=payload,
+                headers=self._auth_headers,
+                timeout=REQUEST_TIMEOUT,
+            ) as resp:
+                if resp.status in (401, 403):
+                    self.token = None
+                    raise LumosAuthError(f"HTTP {resp.status} from {path}")
+                try:
+                    data = await resp.json(content_type=None)
+                except ValueError:
+                    data = None
+                if resp.status >= 400:
+                    # Lumos sends its statusCode as JSON on 4xx replies too
+                    # (e.g. HTTP 400 + 20003), so read it before failing.
+                    code = _status_code(data)
+                    if code in API_STATUS_SESSION_REJECTED:
+                        self.token = None
+                        raise LumosAuthError(f"HTTP {resp.status} {code} from {path}")
+                    raise LumosApiError(f"HTTP {resp.status} (statusCode={code}) from {path}")
+        except LumosApiError:
+            raise
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise LumosApiError(f"{method} {path} failed: {err!r}") from err
+
+        if not isinstance(data, dict):
+            raise LumosApiError(f"{method} {path} returned unexpected payload type")
+        _LOGGER.debug(
+            "%s %s -> statusCode=%s",
+            method,
+            url,
+            data.get("Response", {}).get("Status", {}).get("statusCode"),
+        )
+        return data
 
     async def _post(self, path: str, payload: dict) -> dict:
-        session = await self._get_session()
-        url = self.base_url + path
-        _CREDENTIAL_KEYS = {"userPassword", "token"}
-        _safe_payload = {k: "***" if k in _CREDENTIAL_KEYS else v for k, v in payload.items()}
-        _LOGGER.debug("POST %s  payload=%s", url, _safe_payload)
-        async with session.post(url, json=payload, headers=self._auth_headers, ssl=True) as resp:
-            resp.raise_for_status()
-            data = await resp.json(content_type=None)
-            _TOKEN_KEYS = {"token", "phoneLongId"}
-            try:
-                resp_data = data.get("Response", {}).get("Data", {})
-                _safe_data = {k: "***" if k in _TOKEN_KEYS else v for k, v in resp_data.items()}
-                _safe_resp = {**data, "Response": {**data["Response"], "Data": _safe_data}}
-            except Exception:
-                _safe_resp = data
-            _LOGGER.debug("POST %s  response=%s", url, _safe_resp)
-            return data
+        return await self._request("POST", path, payload)
 
     async def _put(self, path: str, payload: dict) -> dict:
-        session = await self._get_session()
-        url = self.base_url + path
-        _LOGGER.debug("PUT %s  payload=%s", url, payload)
-        async with session.put(url, json=payload, headers=self._auth_headers, ssl=True) as resp:
-            resp.raise_for_status()
-            data = await resp.json(content_type=None)
-            _LOGGER.debug("PUT %s  response=%s", url, data)
-            return data
+        return await self._request("PUT", path, payload)
 
     async def _get(self, path: str) -> dict:
-        session = await self._get_session()
-        url = self.base_url + path
-        _LOGGER.debug("GET %s", url)
-        async with session.get(url, headers=self._auth_headers, ssl=True) as resp:
-            resp.raise_for_status()
-            data = await resp.json(content_type=None)
-            _LOGGER.debug("GET %s  response keys=%s", url, list(data.get("Response", {}).keys()))
-            return data
+        return await self._request("GET", path)
 
     # ------------------------------------------------------------------
     # Authentication
@@ -214,10 +252,10 @@ class LumosApi:
         try:
             self.app_id = int(res["Response"]["Data"]["appId"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise LumosAuthError("App registration response missing appId") from exc
+            raise LumosApiError("App registration response missing appId") from exc
 
         if self.app_id <= 0:
-            raise LumosAuthError(f"App registration returned invalid appId={self.app_id}")
+            raise LumosApiError(f"App registration returned invalid appId={self.app_id}")
 
         _LOGGER.debug("App registered. appId=%d", self.app_id)
         return self.app_id
@@ -228,8 +266,10 @@ class LumosApi:
           1. Register the app → obtain appId
           2. POST /login with SHA-512 hashed password → obtain token + session data
 
-        Raises LumosAuthError on failure.
+        Raises LumosAuthError when the cloud rejects the credentials and
+        LumosApiError for any other failure.
         """
+        self.token = None
         await self.register_app()
 
         pass_hash = hashlib.sha512(self._password.encode()).hexdigest()
@@ -239,18 +279,23 @@ class LumosApi:
             "userPassword": pass_hash,
         }
         res = await self._post("/login", payload)
-        self._check_status(res, "login")
+        self._check_status(res, "login", auth_codes=API_STATUS_LOGIN_REJECTED)
 
-        data = res["Response"]["Data"]
-        self.token = data["token"]
-        self.root_org_id = int(data["rootOrgId"])
-        self.cloud_source_id = int(data["phoneLongId"])
+        try:
+            data = res["Response"]["Data"]
+            token = data["token"]
+            root_org_id = int(data["rootOrgId"])
+            cloud_source_id = int(data["phoneLongId"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise LumosApiError("Login response missing session fields") from exc
+        if not token:
+            raise LumosApiError("Login response contained an empty token")
 
-        _LOGGER.info(
-            "Lumos login successful. rootOrgId=%d cloudSourceId=%d",
-            self.root_org_id,
-            self.cloud_source_id,
-        )
+        self.token = token
+        self.root_org_id = root_org_id
+        self.cloud_source_id = cloud_source_id
+
+        _LOGGER.info("Lumos login successful")
         return True
 
     @property
@@ -381,7 +426,7 @@ class LumosApi:
     #  warm           – inverse mirror; set to 0 when using cool
     #  rgb            – "R,G,B" string e.g. "255,128,0"
     #  whiteIntensity – dedicated white channel (0-100)
-    #  curtainPosition– for curtain/blind devices (0-100)
+    #  curtainPosition– part of the standard payload; always 0 for lights
     # ------------------------------------------------------------------
 
     def _operate_payload(
@@ -552,102 +597,10 @@ class LumosApi:
         _LOGGER.debug("set_rgb device_id=%s rgb=%s", device_id, rgb_str)
         return await self._post(OPERATIONS_ENDPOINT, payload)
 
-    # ------------------------------------------------------------------
-    # Curtain / blind operations
-    #
-    # Confirmed operationId codes:
-    #   723 – OPEN     (fully open)
-    #   724 – CLOSE    (fully close)
-    #   725 – PAUSE    (stop mid-travel)
-    #   726 – POSITION (move to curtainPosition 0-100)
-    #
-    # The OPEN / CLOSE / PAUSE payloads do NOT use curtainPosition.
-    # The SET POSITION payload uses curtainPosition and operationId=726.
-    # intensity and cool are sent at neutral values for curtain commands.
-    # ------------------------------------------------------------------
-
-    def _curtain_payload(
-        self,
-        device_id: int | str,
-        org_id: int | str,
-        operation_id: int,
-        *,
-        curtain_position: int = 0,
-        grp_dvc: int = GRP_DVC_DEVICE,
-    ) -> dict:
-        """Build the standard curtain /operate payload."""
-        return {
-            "grpDvc": grp_dvc,
-            "grpDvcId": int(device_id),
-            "organizationId": str(org_id),
-            "operationId": operation_id,
-            "intensity": 100,
-            "cool": 50,
-            "warm": 0,
-            "rgb": "0,0,0",
-            "whiteIntensity": 0,
-            "curtainPosition": curtain_position,
-        }
-
-
     async def set_rgbww(self, device_id, org_id, red, green, blue, *, warm=0, cool=0, intensity=100) -> dict:
         """Set 5-channel RGBWW (operationId=507)."""
         r, g, b = (max(0, min(255, v)) for v in (red, green, blue))
         rgb_str = f"{r},{g},{b}"
         payload = self._operate_payload(device_id, org_id, OP_ID_RGB, intensity=intensity, cool=cool, warm=warm, rgb=rgb_str)
         _LOGGER.debug("set_rgbww device_id=%s rgb=%s warm=%d cool=%d", device_id, rgb_str, warm, cool)
-        return await self._post(OPERATIONS_ENDPOINT, payload)
-    async def curtain_open(
-        self,
-        device_id: int | str,
-        org_id: int | str,
-    ) -> dict:
-        """Fully open the curtain  (operationId=723)."""
-        payload = self._curtain_payload(device_id, org_id, OP_ID_CURTAIN_OPEN)
-        _LOGGER.debug("curtain_open  device_id=%s org_id=%s", device_id, org_id)
-        return await self._post(OPERATIONS_ENDPOINT, payload)
-
-    async def curtain_close(
-        self,
-        device_id: int | str,
-        org_id: int | str,
-    ) -> dict:
-        """Fully close the curtain  (operationId=724)."""
-        payload = self._curtain_payload(device_id, org_id, OP_ID_CURTAIN_CLOSE)
-        _LOGGER.debug("curtain_close device_id=%s org_id=%s", device_id, org_id)
-        return await self._post(OPERATIONS_ENDPOINT, payload)
-
-    async def curtain_pause(
-        self,
-        device_id: int | str,
-        org_id: int | str,
-    ) -> dict:
-        """Stop the curtain mid-travel  (operationId=725)."""
-        payload = self._curtain_payload(device_id, org_id, OP_ID_CURTAIN_PAUSE)
-        _LOGGER.debug("curtain_pause device_id=%s org_id=%s", device_id, org_id)
-        return await self._post(OPERATIONS_ENDPOINT, payload)
-
-    async def curtain_set_position(
-        self,
-        device_id: int | str,
-        org_id: int | str,
-        position: int,
-    ) -> dict:
-        """
-        Move curtain to an exact position  (operationId=726).
-
-        Args:
-            device_id : Lumos cloud device ID.
-            org_id    : organizationId the device belongs to.
-            position  : 0 (fully closed) – 100 (fully open).
-                        HA cover position uses the same 0-100 scale,
-                        so no conversion is needed.
-        """
-        clamped = max(0, min(100, position))
-        payload = self._curtain_payload(
-            device_id, org_id,
-            OP_ID_CURTAIN_POSITION,
-            curtain_position=clamped,
-        )
-        _LOGGER.debug("curtain_set_position device_id=%s position=%d", device_id, clamped)
         return await self._post(OPERATIONS_ENDPOINT, payload)

@@ -61,18 +61,33 @@ class LumosCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         both discovery and state-refresh purposes.
         """
         try:
-            if not self.api.is_logged_in:
-                _LOGGER.info("Not logged in – attempting re-authentication")
-                await self.api.login()
-
-            devices = await self.api.get_devices()
-
+            return await self._fetch()
         except LumosAuthError as err:
-            # Trigger a re-auth flow in the UI
-            raise ConfigEntryAuthFailed(str(err)) from err
+            # Session token rejected (e.g. superseded by a newer login).
+            # LumosApi has cleared it; log in again and retry once. Only a
+            # rejected login raises ConfigEntryAuthFailed.
+            _LOGGER.debug("Lumos session rejected (%s) – logging in again", err)
+        try:
+            return await self._fetch()
+        except LumosAuthError as err:
+            raise UpdateFailed(f"Lumos session rejected after re-login: {err}") from err
+
+    async def _fetch(self) -> dict[str, dict[str, Any]]:
+        """Log in if needed, then fetch all devices."""
+        if not self.api.is_logged_in:
+            try:
+                await self.api.login()
+            except LumosAuthError as err:
+                # The cloud rejected the stored credentials: ask the user.
+                raise ConfigEntryAuthFailed(str(err)) from err
+            except LumosApiError as err:
+                raise UpdateFailed(f"Lumos login failed: {err}") from err
+
+        try:
+            devices = await self.api.get_devices()
+        except LumosAuthError:
+            raise
         except LumosApiError as err:
             raise UpdateFailed(f"Lumos API error: {err}") from err
-        except Exception as err:  # noqa: BLE001
-            raise UpdateFailed(f"Unexpected error fetching Lumos devices: {err}") from err
 
         return {str(dev["deviceId"]): dev for dev in devices}
