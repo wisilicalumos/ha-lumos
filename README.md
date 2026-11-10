@@ -28,8 +28,6 @@ A Home Assistant custom integration for [Lumos Smart Lighting](https://www.wisil
 | 1023 | CCT Tunable White | ON/OFF, Brightness, Colour Temp |
 | 1024 | Radiar DP5 – DALI Dimmer | ON/OFF, Brightness (per channel) |
 | 1042 | Tunable White Light | ON/OFF, Brightness, Colour Temp |
-| 1, 2, 3 | Standard Lights | ON/OFF, Brightness, Colour Temp |
-| 6, 7 | RGB Lights | ON/OFF, Brightness, RGB, Colour Temp |
 
 Other device types are not exposed in Home Assistant yet. They are skipped and logged with a warning so they can be reported and added.
 

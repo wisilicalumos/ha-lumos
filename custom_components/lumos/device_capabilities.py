@@ -55,7 +55,6 @@ class LumosCapability:
 # Reusable preset kwargs
 # ---------------------------------------------------------------------------
 
-_ONOFF = dict(platform=LumosPlatform.LIGHT, has_onoff=True)
 _DIMMABLE = dict(platform=LumosPlatform.LIGHT, has_onoff=True, has_brightness=True)
 _TW = dict(
     platform=LumosPlatform.LIGHT, has_onoff=True, has_brightness=True, has_color_temp=True
@@ -79,11 +78,6 @@ _RGB = dict(
 # ---------------------------------------------------------------------------
 
 DEVICE_CAPABILITIES: dict[int, LumosCapability] = {
-    1:    LumosCapability(**_ONOFF,    label="Non-Dimmable Light"),
-    2:    LumosCapability(**_DIMMABLE, label="Dimmable Light"),
-    3:    LumosCapability(**_TW,       label="Tunable White Light"),
-    6:    LumosCapability(**_RGB,      label="RGB+W Light"),
-    7:    LumosCapability(**_RGB,      label="RGB Light"),
     1021: LumosCapability(**_RGB,      label="RGB CCT Light"),
     1022: LumosCapability(**_TW,       label="WCA2CS Tunable White"),
     1023: LumosCapability(**_TW,       label="CCT Tunable White"),
