@@ -389,27 +389,6 @@ class LumosApi:
         return all_groups
 
     # ------------------------------------------------------------------
-    # Device state
-    # ------------------------------------------------------------------
-
-    async def get_device_status(self, device_id: int | str) -> dict[str, Any]:
-        """
-        Fetch live state for a single device.
-
-        TODO: Replace with actual Lumos single-device status endpoint once
-              the Operations API docs are available.  The fallback used here
-              re-fetches the full device list and finds the matching entry,
-              which is correct but not efficient for large installations.
-        """
-        # PLACEHOLDER – use a dedicated status endpoint if one exists, e.g.:
-        #   return await self._get(f"/device/status/{device_id}")
-        devices = await self.get_devices()
-        for dev in devices:
-            if str(dev.get("deviceId")) == str(device_id):
-                return dev
-        raise LumosApiError(f"Device {device_id} not found in device listing")
-
-    # ------------------------------------------------------------------
     # Device operations
     #
     # Endpoint : POST {base_url}/operate
@@ -581,8 +560,8 @@ class LumosApi:
             intensity      : Current brightness — preserved so it is not reset.
             cool           : Current warm/cool  — preserved so it is not reset.
 
-        The Lumos API accepts RGB as a comma-separated string: "R,G,B"
-        (confirmed from device listing and schedule payload observations).
+        The Lumos API takes RGB as a comma-separated string: "R,G,B",
+        the same format /wide/1 returns in the ``rgb`` field.
         """
         r, g, b = (max(0, min(255, v)) for v in (red, green, blue))
         rgb_str = f"{r},{g},{b}"

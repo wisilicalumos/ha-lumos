@@ -7,7 +7,6 @@ Setup sequence:
      • Creates a LumosCoordinator and performs an initial data refresh.
      • Forwards setup to the light platform.
   2. async_unload_entry – tears everything down cleanly.
-  3. async_reload_entry – used after a re-auth to pick up a new password.
 """
 
 from __future__ import annotations
@@ -95,12 +94,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # The API client uses HA's shared session so we don't close it here
         _LOGGER.info("Lumos integration unloaded.")
     return unloaded
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload a Lumos config entry (e.g. after re-auth)."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
