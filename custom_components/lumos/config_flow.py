@@ -22,11 +22,12 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import LumosApi, LumosAuthError, LumosApiError
+from .api import LumosApi, LumosAuthError, LumosApiError, generate_device_id
 from .const import (
     CONF_BASE_URL,
     CONF_BUNDLE_ID,
     CONF_BUNDLE_PACKAGE,
+    CONF_DEVICE_ID,
     CONF_PASSWORD,
     CONF_USERNAME,
     DEFAULT_BUNDLE_ID,
@@ -71,13 +72,16 @@ async def _validate_credentials(
     password: str,
     bundle_id: str,
     bundle_package: str,
+    device_id: str,
 ) -> dict[str, str]:
     """
     Attempt app registration + login and return errors dict.
     Returns {} on success.
     """
     session = async_get_clientsession(hass)
-    api = LumosApi(base_url, username, password, bundle_id, bundle_package, session=session)
+    api = LumosApi(
+        base_url, username, password, bundle_id, bundle_package, device_id, session=session
+    )
     try:
         await api.login()
     except LumosAuthError:
@@ -94,6 +98,7 @@ class LumosConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Lumos."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._reauth_entry: ConfigEntry | None = None
@@ -116,8 +121,15 @@ class LumosConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(f"{base_url}_{username}")
             self._abort_if_unique_id_configured()
 
+            device_id = generate_device_id()
             errors = await _validate_credentials(
-                self.hass, base_url, username, password, DEFAULT_BUNDLE_ID, DEFAULT_BUNDLE_PACKAGE
+                self.hass,
+                base_url,
+                username,
+                password,
+                DEFAULT_BUNDLE_ID,
+                DEFAULT_BUNDLE_PACKAGE,
+                device_id,
             )
 
             if not errors:
@@ -129,6 +141,7 @@ class LumosConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_PASSWORD: password,
                         CONF_BUNDLE_ID: DEFAULT_BUNDLE_ID,
                         CONF_BUNDLE_PACKAGE: DEFAULT_BUNDLE_PACKAGE,
+                        CONF_DEVICE_ID: device_id,
                     },
                 )
 
@@ -163,7 +176,10 @@ class LumosConfigFlow(ConfigFlow, domain=DOMAIN):
                 self.hass,
                 entry.data[CONF_BASE_URL],
                 entry.data[CONF_USERNAME],
-                new_password, DEFAULT_BUNDLE_ID, DEFAULT_BUNDLE_PACKAGE,
+                new_password,
+                entry.data[CONF_BUNDLE_ID],
+                entry.data[CONF_BUNDLE_PACKAGE],
+                entry.data[CONF_DEVICE_ID],
             )
             if not errors:
                 self.hass.config_entries.async_update_entry(

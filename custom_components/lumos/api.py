@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import secrets
 import uuid
 from typing import Any
 
@@ -50,6 +51,15 @@ def _status_code(data: Any) -> int | None:
         return None
 
 
+def generate_device_id() -> str:
+    """Return a new random device id for one config entry.
+
+    A 48-bit decimal string, the same shape as the value the app
+    registration received before, without reading the host MAC address.
+    """
+    return str(secrets.randbits(48))
+
+
 class LumosApiError(Exception):
     """Generic Lumos API error."""
 
@@ -68,6 +78,7 @@ class LumosApi:
         password: str,
         bundle_id: str,
         bundle_package: str,
+        device_id: str,
         session: aiohttp.ClientSession | None = None,
     ) -> None:
         # Normalise: accept both short (https://lumos.wisilica.com) and full URL
@@ -86,8 +97,8 @@ class LumosApi:
         self.root_org_id: int = 0
         self.cloud_source_id: int = 0   # phoneLongId → used as "phoneId" header
 
-        # Use a stable device identifier based on host MAC address
-        self._device_uid = hex(uuid.getnode()).replace("0x", "").lower()
+        # Random id generated once per config entry (see generate_device_id)
+        self._device_id = device_id
 
         self._session = session
         self._owns_session = session is None
@@ -117,7 +128,7 @@ class LumosApi:
         base = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "User-Agent": f"ha-lumos-{self._device_uid}",
+            "User-Agent": f"ha-lumos-{self._device_id}",
         }
         if self.token:
             base["token"] = self.token
@@ -236,11 +247,12 @@ class LumosApi:
         POST /app-registration
 
         Registers this HA instance as a Lumos application and obtains an appId.
-        A new device token is generated each time but the MAC-based deviceId is stable.
+        A new device token is generated each time; the deviceId is the random id
+        stored in the config entry, so it stays stable across restarts.
         """
-        device_token = uuid.uuid1().hex
+        device_token = uuid.uuid4().hex
         payload = {
-            "deviceId": str(uuid.getnode()),
+            "deviceId": self._device_id,
             "modelInfo": "homeassistant",
             "osInfo": "linux",
             "deviceToken": device_token,

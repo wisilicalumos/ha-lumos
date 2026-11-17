@@ -19,11 +19,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import LumosApi, LumosAuthError, LumosApiError
+from .api import LumosApi, LumosAuthError, LumosApiError, generate_device_id
 from .const import (
     CONF_BASE_URL,
     CONF_BUNDLE_ID,
     CONF_BUNDLE_PACKAGE,
+    CONF_DEVICE_ID,
     CONF_PASSWORD,
     CONF_USERNAME,
     DEFAULT_SCAN_INTERVAL,
@@ -33,6 +34,25 @@ from .const import (
 from .coordinator import LumosCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate older config entries.
+
+    1.1 -> 1.2: add a random device id (replaces the host MAC address that
+    was read with uuid.getnode() on the event loop).
+    """
+    if entry.version > 1:
+        # Downgrade from a future version is not supported
+        return False
+
+    if entry.minor_version < 2:
+        data = {**entry.data}
+        data.setdefault(CONF_DEVICE_ID, generate_device_id())
+        hass.config_entries.async_update_entry(entry, data=data, minor_version=2)
+        _LOGGER.debug("Migrated Lumos config entry to version 1.2")
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -47,6 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         password=entry.data[CONF_PASSWORD],
         bundle_id=entry.data[CONF_BUNDLE_ID],
         bundle_package=entry.data[CONF_BUNDLE_PACKAGE],
+        device_id=entry.data[CONF_DEVICE_ID],
         session=session,
     )
 

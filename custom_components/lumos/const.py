@@ -7,6 +7,9 @@ CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_BUNDLE_ID = "bundle_id"
 CONF_BUNDLE_PACKAGE = "bundle_package"
+# Random per-entry id sent as the Lumos app-registration deviceId and used in
+# the User-Agent. Generated once and stored in the config entry.
+CONF_DEVICE_ID = "device_id"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 30          # seconds between coordinator polls
